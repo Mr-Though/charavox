@@ -16,14 +16,19 @@ class EpubService {
 
       for (final ch in epubBook.chapters) {
         final text = _stripHtml(ch.htmlContent ?? '');
+        // Skip cover pages and empty chapters
         if (text.trim().isEmpty) continue;
+        final isCover = (ch.title ?? '').toLowerCase().contains('cover') &&
+            text.trim().length < 200;
 
-        chapters.add(Chapter(
-          index: index,
-          title: ch.title ?? '第${index + 1}章',
-          text: text,
-        ));
-        index++;
+        if (!isCover) {
+          chapters.add(Chapter(
+            index: index,
+            title: ch.title ?? '第${index + 1}章',
+            text: text,
+          ));
+          index++;
+        }
       }
 
       final book = Book(
