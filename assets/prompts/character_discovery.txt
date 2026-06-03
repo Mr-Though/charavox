@@ -1,0 +1,23 @@
+分析以下小说文本片段，发现所有角色并描述其特征。
+
+对每个角色输出：
+{
+  "canonical_name": "角色规范名",
+  "aliases": ["别名1", "别名2"],
+  "gender": "male|female|unknown",
+  "age": "child|teen|young_adult|middle_aged|elderly|unknown",
+  "personalities": ["性格标签1", "性格标签2"],
+  "first_person": "一人称代词 或 null",
+  "sentence_endings": ["語尾模式1"] 或 null,
+  "voice_prompt": "中文音色描述，80-150字",
+  "role_type": "protagonist|antagonist|supporting|minor",
+  "description": "角色在故事中的简要描述"
+}
+
+注意：
+- 通过对话语气、用词特征推断性格和性别
+- 注意角色间的称呼关系（如"师父"表示师徒关系）
+- 如果角色有多个称呼，全部录入 aliases
+
+文本片段：
+{text}

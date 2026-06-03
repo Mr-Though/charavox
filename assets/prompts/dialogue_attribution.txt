@@ -1,0 +1,39 @@
+已知角色列表：
+{characters_json}
+
+逐句标注以下文本中每一句话的说话人。标注规则：
+
+1. 对话（引号内的内容）：标注 speaker_id 为说话人的角色 ID
+2. 旁白/叙述（非引号内容）：speaker_id = "narrator"
+3. 内心独白：type = "monologue"
+4. 情绪标注：根据上下文推断情绪（喜怒哀惧惊厌或 null）
+5. 指代消解：如果上下文中同一角色用不同称呼，统一使用 canonical_name 对应的 ID
+
+声线变体检测 (voice_variant):
+- 如果对话描述中明确提到角色改变了说话方式（压低声线、模仿他人、装出某种语气），
+  标记 voice_variant，描述当前音色特征
+- 如果角色处于特殊生理状态（受伤、醉酒、极度疲惫），标记 voice_variant
+- 无特殊标记时 voice_variant_id 为 null
+
+输出格式：
+{
+  "script": [
+    {
+      "speaker_id": "角色ID 或 narrator",
+      "voice_variant_id": "变体ID 或 null",
+      "text": "原文字句",
+      "emotion": "情绪 或 null",
+      "type": "narration|dialogue|monologue"
+    }
+  ],
+  "new_characters": [
+    {
+      "temporary_id": "unknown_N",
+      "canonical_name": "角色名",
+      "evidence": "判断依据"
+    }
+  ]
+}
+
+文本：
+{text}
