@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:charavox/models/character.dart';
 import 'package:charavox/screens/character/character_list_screen.dart';
+import 'package:charavox/services/cache_service.dart';
 import 'widgets/text_view.dart';
 import 'widgets/playback_bar.dart';
 
@@ -22,7 +24,24 @@ class ReaderScreen extends ConsumerStatefulWidget {
 
 class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _scrollController = ScrollController();
+  final _cacheService = CacheService();
   int? _highlightedLine;
+  List<CharacterInfo> _characters = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCharacters();
+  }
+
+  Future<void> _loadCharacters() async {
+    final cached = await _cacheService.loadBookMeta(widget.bookId);
+    if (mounted) {
+      setState(() {
+        _characters = cached?.characters ?? [];
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -45,7 +64,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             tooltip: '角色管理',
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const CharacterListScreen(characters: []),
+                builder: (_) =>
+                    CharacterListScreen(characters: _characters),
               ));
             },
           ),

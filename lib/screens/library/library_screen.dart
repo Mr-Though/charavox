@@ -113,49 +113,35 @@ class LibraryScreen extends ConsumerWidget {
     List<Chapter> chapters,
   ) async {
     final cacheService = CacheService();
-
-    // Check cache first
     final hasCache = await cacheService.hasAnalysis(book.id);
 
     if (!hasCache) {
-      // Get API config
       final apiConfig = ref.read(settingsProvider);
       if (apiConfig == null || apiConfig.llmApiKey.isEmpty) {
-        if (context.mounted) {
-          final goSettings = await showDialog<bool>(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('未配置 LLM API'),
-              content: const Text('需要先配置 LLM API 才能分析角色。\n是否前往设置？'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('去设置'),
-                ),
-              ],
-            ),
-          );
-          if (goSettings == true) {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => const SettingsScreen(),
-            ));
-          }
+        if (!context.mounted) return;
+        final goSettings = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('未配置 LLM API'),
+            content: const Text('需要先配置 LLM API 才能分析角色。\n是否前往设置？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('去设置'),
+              ),
+            ],
+          ),
+        );
+        if (goSettings == true && context.mounted) {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const SettingsScreen(),
+          ));
         }
         return;
-      }
-
-      // Show analysis progress dialog
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) =>
-              _AnalysisDialog(bookId: book.id, book: book, chapters: chapters),
-        );
       }
 
       // Start analysis
@@ -165,16 +151,23 @@ class LibraryScreen extends ConsumerWidget {
         model: apiConfig.llmModel,
       );
 
+      // Show dialog and wait for analysis to complete
       if (context.mounted) {
-        ref.read(analysisProvider(book.id).notifier).analyze(
-          book: book,
-          chapters: chapters,
-          llmService: llmService,
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => _AnalysisDialog(
+            bookId: book.id,
+            book: book,
+            chapters: chapters,
+            llmService: llmService,
+          ),
         );
+        // Actual analysis starts inside the dialog
       }
     }
 
-    // Navigate to reader (after cache check or analysis starts)
+    // Navigate to reader after analysis completes
     if (context.mounted) {
       Navigator.push(context, MaterialPageRoute(
         builder: (_) => ReaderScreen(
@@ -187,20 +180,41 @@ class LibraryScreen extends ConsumerWidget {
   }
 }
 
-class _AnalysisDialog extends ConsumerWidget {
+class _AnalysisDialog extends ConsumerStatefulWidget {
   final String bookId;
   final Book book;
   final List<Chapter> chapters;
+  final LlmService llmService;
 
   const _AnalysisDialog({
     required this.bookId,
     required this.book,
     required this.chapters,
+    required this.llmService,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(analysisProvider(bookId));
+  ConsumerState<_AnalysisDialog> createState() => _AnalysisDialogState();
+}
+
+class _AnalysisDialogState extends ConsumerState<_AnalysisDialog> {
+  @override
+  void initState() {
+    super.initState();
+    _startAnalysis();
+  }
+
+  void _startAnalysis() {
+    ref.read(analysisProvider(widget.bookId).notifier).analyze(
+      book: widget.book,
+      chapters: widget.chapters,
+      llmService: widget.llmService,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(analysisProvider(widget.bookId));
     final isDone = state.status == AnalysisStatus.complete ||
         state.status == AnalysisStatus.error;
 
