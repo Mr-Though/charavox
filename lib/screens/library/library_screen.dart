@@ -201,36 +201,53 @@ class _AnalysisDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(analysisProvider(bookId));
+    final isDone = state.status == AnalysisStatus.complete ||
+        state.status == AnalysisStatus.error;
 
-    // Auto-close when complete or error
-    if (state.status == AnalysisStatus.complete ||
-        state.status == AnalysisStatus.error) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pop(context);
-        if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('分析失败: ${state.errorMessage}')),
-          );
-        }
-      });
-    }
-
-    return AlertDialog(
-      title: Text(state.status == AnalysisStatus.discovering
-          ? '正在发现角色...'
-          : '正在分析角色...'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          LinearProgressIndicator(value: state.progress),
-          const SizedBox(height: 16),
-          Text('第 ${state.chaptersAnalyzed} / ${state.totalChapters} 章'),
-          if (state.status == AnalysisStatus.complete)
-            Text('分析完成！已识别 ${state.characters.length} 个角色'),
-          if (state.status == AnalysisStatus.error)
-            Text(state.errorMessage ?? '分析失败',
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
-        ],
+    return PopScope(
+      canPop: isDone,
+      child: AlertDialog(
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(state.status == AnalysisStatus.discovering
+                  ? '正在发现角色...'
+                  : isDone
+                      ? '分析完成'
+                      : '正在分析角色...'),
+            ),
+            if (isDone)
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isDone) ...[
+              LinearProgressIndicator(value: state.progress),
+              const SizedBox(height: 16),
+            ],
+            Text('第 ${state.chaptersAnalyzed} / ${state.totalChapters} 章'),
+            const SizedBox(height: 8),
+            if (state.status == AnalysisStatus.complete)
+              Text('已识别 ${state.characters.length} 个角色，可开始朗读'),
+            if (state.status == AnalysisStatus.error)
+              Text(state.errorMessage ?? '分析失败',
+                  style:
+                      TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+        ),
+        actions: isDone
+            ? [
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('开始阅读'),
+                ),
+              ]
+            : null,
       ),
     );
   }
