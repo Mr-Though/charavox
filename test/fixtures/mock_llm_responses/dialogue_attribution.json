@@ -1,0 +1,26 @@
+{
+  "script": [
+    {
+      "speaker_id": "narrator",
+      "voice_variant_id": null,
+      "text": "巨大的浮游城堡矗立在虚拟的天空中。",
+      "emotion": null,
+      "type": "narration"
+    },
+    {
+      "speaker_id": "char-林风",
+      "voice_variant_id": null,
+      "text": "这就是那个死亡游戏吗？",
+      "emotion": "惊讶",
+      "type": "dialogue"
+    },
+    {
+      "speaker_id": "narrator",
+      "voice_variant_id": null,
+      "text": "桐人低声说道。",
+      "emotion": null,
+      "type": "narration"
+    }
+  ],
+  "new_characters": []
+}

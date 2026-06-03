@@ -1,0 +1,28 @@
+{
+  "characters": [
+    {
+      "canonical_name": "林风",
+      "aliases": ["小林", "风儿"],
+      "gender": "male",
+      "age": "teen",
+      "personalities": ["热血", "正直"],
+      "first_person": null,
+      "sentence_endings": null,
+      "voice_prompt": "18岁少年，声音清亮有力，带着少年人的朝气和热血感",
+      "role_type": "protagonist",
+      "description": "本书主角，年轻剑客"
+    },
+    {
+      "canonical_name": "苏婉",
+      "aliases": ["婉儿"],
+      "gender": "female",
+      "age": "teen",
+      "personalities": ["温柔", "坚强"],
+      "first_person": null,
+      "sentence_endings": null,
+      "voice_prompt": "17岁少女，声音柔软清澈，语调温柔婉转",
+      "role_type": "protagonist",
+      "description": "女主角"
+    }
+  ]
+}
