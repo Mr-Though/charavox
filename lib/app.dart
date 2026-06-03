@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'screens/library/library_screen.dart';
 
 class CharavoxApp extends ConsumerWidget {
   const CharavoxApp({super.key});
@@ -24,9 +25,7 @@ class CharavoxApp extends ConsumerWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(child: Text('聆书 charavox')),
-      ),
+      home: const LibraryScreen(),
     );
   }
 }
