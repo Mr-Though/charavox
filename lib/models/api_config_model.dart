@@ -54,8 +54,8 @@ class ApiPresets {
     ),
     'DeepSeek': LlmPreset(
       name: 'DeepSeek',
-      model: 'deepseek-chat',
-      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'deepseek-v4-flash',
+      baseUrl: 'https://api.deepseek.com',
     ),
     'MiniMax': LlmPreset(
       name: 'MiniMax',
