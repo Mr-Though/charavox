@@ -107,8 +107,11 @@ class LlmService {
           response.data['choices'][0]['message']['content'] as String;
       return jsonDecode(content) as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw LlmApiException('LLM API 调用失败: ${e.message}',
-          originalError: e);
+      final body = e.response?.data?.toString() ?? '';
+      throw LlmApiException(
+        'LLM API 调用失败 (${e.response?.statusCode}): ${body.isNotEmpty ? body : e.message}',
+        originalError: e,
+      );
     } catch (e) {
       if (e is AppException) rethrow;
       throw LlmApiException('LLM 响应解析失败: ${e.toString()}',
