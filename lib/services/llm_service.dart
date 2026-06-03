@@ -52,7 +52,8 @@ class LlmService {
 
     final prompt =
         PromptTemplates.buildCharacterDiscoveryPrompt(textBuffer.toString());
-    final response = await _callLlm(prompt);
+    final jsonPrompt = '$prompt\n请以JSON格式输出。';
+    final response = await _callLlm(jsonPrompt);
     return _parseCharacterDiscovery(response, bookId);
   }
 
@@ -78,8 +79,9 @@ class LlmService {
       charactersJson,
       isJapaneseLN: isJapaneseLN,
     );
+    final jsonPrompt = '$prompt\n请以JSON格式输出。';
 
-    final response = await _callLlm(prompt);
+    final response = await _callLlm(jsonPrompt);
     return _parseDialogueAttribution(
       response,
       bookId,
