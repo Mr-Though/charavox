@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:charavox/screens/settings/settings_screen.dart';
+import 'package:charavox/screens/reader/reader_screen.dart';
+import 'package:charavox/providers/library_provider.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -13,15 +16,31 @@ class LibraryScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: '导入书籍',
-            onPressed: () {
-              // TODO: Task 11 — file_picker integration
+            onPressed: () async {
+              final result =
+                  await ref.read(libraryProvider.notifier).importBook();
+              if (result != null && context.mounted) {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => ReaderScreen(
+                    bookId: result.book.id,
+                    chapterTitle: result.chapters.isNotEmpty
+                        ? result.chapters.first.title
+                        : '正文',
+                    chapterText: result.chapters.isNotEmpty
+                        ? result.chapters.first.text
+                        : '',
+                  ),
+                ));
+              }
             },
           ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: '设置',
             onPressed: () {
-              // TODO: Task 15 — navigate to settings
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ));
             },
           ),
         ],

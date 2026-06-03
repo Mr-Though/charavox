@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:charavox/screens/character/character_list_screen.dart';
 import 'widgets/text_view.dart';
+import 'widgets/playback_bar.dart';
 
 class ReaderScreen extends ConsumerStatefulWidget {
   final String bookId;
@@ -42,7 +44,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             icon: const Icon(Icons.people),
             tooltip: '角色管理',
             onPressed: () {
-              // TODO: Task 16 — navigate to character list
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const CharacterListScreen(characters: []),
+              ));
             },
           ),
         ],
@@ -56,16 +60,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               scrollController: _scrollController,
             ),
           ),
-          Container(
-            height: 64,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              border: Border(
-                top: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-            ),
-            child: const Center(child: Text('播放控制 (待实现)')),
-          ),
+          const PlaybackBar(),
         ],
       ),
     );
