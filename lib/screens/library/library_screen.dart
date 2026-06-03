@@ -4,8 +4,12 @@ import 'package:charavox/models/book.dart';
 import 'package:charavox/screens/settings/settings_screen.dart';
 import 'package:charavox/screens/reader/reader_screen.dart';
 import 'package:charavox/providers/library_provider.dart';
+import 'package:charavox/providers/analysis_provider.dart';
+import 'package:charavox/providers/settings_provider.dart';
 import 'package:charavox/services/epub_service.dart';
 import 'package:charavox/services/txt_service.dart';
+import 'package:charavox/services/llm_service.dart';
+import 'package:charavox/services/cache_service.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -65,9 +69,10 @@ class LibraryScreen extends ConsumerWidget {
           subtitle: Text('${book.chapterCount} 章 · ${book.fileType.name}'),
           trailing: IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => ref.read(libraryProvider.notifier).removeBook(book.id),
+            onPressed: () =>
+                ref.read(libraryProvider.notifier).removeBook(book.id),
           ),
-          onTap: () => _openBook(context, book),
+          onTap: () => _openBook(context, book, ref),
         );
       },
     );
@@ -75,48 +80,158 @@ class LibraryScreen extends ConsumerWidget {
 
   Future<void> _importBook(BuildContext context, WidgetRef ref) async {
     final result = await ref.read(libraryProvider.notifier).importBook();
-    if (result != null && context.mounted) {
+    if (result == null || !context.mounted) return;
+
+    final book = result.book;
+    final chapters = result.chapters;
+    await _analyzeAndOpen(context, ref, book, chapters);
+  }
+
+  Future<void> _openBook(
+    BuildContext context,
+    Book book,
+    WidgetRef ref,
+  ) async {
+    // Re-parse the file
+    List<Chapter> chapters;
+    if (book.fileType == FileType.epub) {
+      final (_, chs) = await EpubService().parse(book.filePath);
+      chapters = chs;
+    } else {
+      final (_, chs) = TxtService().parse(book.filePath);
+      chapters = chs;
+    }
+    if (!context.mounted) return;
+
+    await _analyzeAndOpen(context, ref, book, chapters);
+  }
+
+  Future<void> _analyzeAndOpen(
+    BuildContext context,
+    WidgetRef ref,
+    Book book,
+    List<Chapter> chapters,
+  ) async {
+    final cacheService = CacheService();
+
+    // Check cache first
+    final hasCache = await cacheService.hasAnalysis(book.id);
+
+    if (!hasCache) {
+      // Get API config
+      final apiConfig = ref.read(settingsProvider);
+      if (apiConfig == null || apiConfig.llmApiKey.isEmpty) {
+        if (context.mounted) {
+          final goSettings = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('未配置 LLM API'),
+              content: const Text('需要先配置 LLM API 才能分析角色。\n是否前往设置？'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('去设置'),
+                ),
+              ],
+            ),
+          );
+          if (goSettings == true) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const SettingsScreen(),
+            ));
+          }
+        }
+        return;
+      }
+
+      // Show analysis progress dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) =>
+              _AnalysisDialog(bookId: book.id, book: book, chapters: chapters),
+        );
+      }
+
+      // Start analysis
+      final llmService = LlmService(
+        baseUrl: apiConfig.llmBaseUrl,
+        apiKey: apiConfig.llmApiKey,
+        model: apiConfig.llmModel,
+      );
+
+      if (context.mounted) {
+        ref.read(analysisProvider(book.id).notifier).analyze(
+          book: book,
+          chapters: chapters,
+          llmService: llmService,
+        );
+      }
+    }
+
+    // Navigate to reader (after cache check or analysis starts)
+    if (context.mounted) {
       Navigator.push(context, MaterialPageRoute(
         builder: (_) => ReaderScreen(
-          bookId: result.book.id,
-          chapterTitle: result.chapters.isNotEmpty
-              ? result.chapters.first.title
-              : '正文',
-          chapterText: result.chapters.isNotEmpty
-              ? result.chapters.first.text
-              : '',
+          bookId: book.id,
+          chapterTitle: chapters.isNotEmpty ? chapters.first.title : '正文',
+          chapterText: chapters.isNotEmpty ? chapters.first.text : '',
         ),
       ));
     }
   }
+}
 
-  Future<void> _openBook(BuildContext context, Book book) async {
-    // Re-parse the file to get chapters
-    try {
-      late List<Chapter> chapters;
-      if (book.fileType == FileType.epub) {
-        final (_, chs) = await EpubService().parse(book.filePath);
-        chapters = chs;
-      } else {
-        final (_, chs) = TxtService().parse(book.filePath);
-        chapters = chs;
-      }
+class _AnalysisDialog extends ConsumerWidget {
+  final String bookId;
+  final Book book;
+  final List<Chapter> chapters;
 
-      if (context.mounted) {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => ReaderScreen(
-            bookId: book.id,
-            chapterTitle: chapters.isNotEmpty ? chapters.first.title : '正文',
-            chapterText: chapters.isNotEmpty ? chapters.first.text : '',
-          ),
-        ));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('打开失败: $e')),
-        );
-      }
+  const _AnalysisDialog({
+    required this.bookId,
+    required this.book,
+    required this.chapters,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(analysisProvider(bookId));
+
+    // Auto-close when complete or error
+    if (state.status == AnalysisStatus.complete ||
+        state.status == AnalysisStatus.error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pop(context);
+        if (state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('分析失败: ${state.errorMessage}')),
+          );
+        }
+      });
     }
+
+    return AlertDialog(
+      title: Text(state.status == AnalysisStatus.discovering
+          ? '正在发现角色...'
+          : '正在分析角色...'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(value: state.progress),
+          const SizedBox(height: 16),
+          Text('第 ${state.chaptersAnalyzed} / ${state.totalChapters} 章'),
+          if (state.status == AnalysisStatus.complete)
+            Text('分析完成！已识别 ${state.characters.length} 个角色'),
+          if (state.status == AnalysisStatus.error)
+            Text(state.errorMessage ?? '分析失败',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ],
+      ),
+    );
   }
 }
